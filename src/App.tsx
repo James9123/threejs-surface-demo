@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -47,7 +47,7 @@ export default function StaticSurfaceRegions() {
   const probeEndY = Math.min(5, h2);
 
   const getProbeText = () => {
-    if (!inGreenRegion || probeStartY >= probeEndY) return 'not stable!';
+    if (!inGreenRegion || probeStartY >= probeEndY) return 'fully stable!';
     const labelStart = ((probeStartY + 5) / 10) * 90;
     const labelEnd = ((probeEndY + 5) / 10) * 90;
     return `angle: ${labelStart.toFixed(1)}° - ${labelEnd.toFixed(1)}°`;
@@ -75,7 +75,6 @@ export default function StaticSurfaceRegions() {
     }
   `;
 
-  // Critical points data
   const criticalPoints = [
     { x: -1, z: 0.75, y: 33 },
     { x: 0, z: 1.00, y: 55 },
@@ -96,9 +95,9 @@ export default function StaticSurfaceRegions() {
     const labelSize = 0.36;
     const offset = 0.42;
 
-    const xOrigin = [-5, -5, -5];
+    const xOrigin = [-5, -5, -5] as const;
     const yzOriginX = -5 + (3 / 12) * axisLength;
-    const yzOrigin = [yzOriginX, -5, -5];
+    const yzOrigin = [yzOriginX, -5, -5] as const;;
 
     return (
       <>
@@ -255,7 +254,7 @@ export default function StaticSurfaceRegions() {
           />
         </mesh>
 
-        {/* Critical Points as Spheres */}
+        {/* Critical Points */}
         {criticalPoints.map((point, index) => {
           const sceneX = -5 + ((point.x + 3) / 12) * 10;
           const sceneZ = -5 + (point.z / 2.5) * 10;
@@ -268,10 +267,13 @@ export default function StaticSurfaceRegions() {
           );
         })}
 
-        {/* Probe */}
+        {/* Probe Line - FIXED */}
         {inGreenRegion && probeStartY < probeEndY && (
           <Line
-            points={[[probeX, probeStartY, probeZ], [probeX, probeEndY, probeZ]]}
+            points={[
+              [probeX, probeStartY, probeZ],
+              [probeX, probeEndY, probeZ]
+            ]}
             color="#00ffff"
             lineWidth={4}
           />
