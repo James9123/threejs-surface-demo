@@ -291,21 +291,41 @@ export default function StaticSurfaceRegions() {
         <pointLight position={[12, 15, 8]} intensity={0.6} />
       </Canvas>
 
-      {/* Controls */}
+      your current controls section with this:
+tsx{/* Controls */}
       <div style={{
         position: 'absolute', bottom: 20, left: 20,
         background: 'rgba(0,0,0,0.7)', padding: '16px 20px',
         borderRadius: '8px', color: '#fff', fontFamily: 'monospace', fontSize: '14px', zIndex: 10
       }}>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', marginBottom: '4px' }}>X: {probeX.toFixed(1)}</label>
-          <input type="range" min={-5} max={5} step={0.1} value={probeX}
-                 onChange={(e) => setProbeX(parseFloat(e.target.value))} style={{ width: '220px' }} />
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{ display: 'block', marginBottom: '6px' }}>
+            X: {probeX.toFixed(1)} <span style={{ color: '#888' }}>(-3 to 9)</span>
+          </label>
+          <input
+            type="range"
+            min={-3}
+            max={9}
+            step={0.1}
+            value={probeX}
+            onChange={(e) => setProbeX(parseFloat(e.target.value))}
+            style={{ width: '240px' }}
+          />
         </div>
+
         <div>
-          <label style={{ display: 'block', marginBottom: '4px' }}>Z: {probeZ.toFixed(1)}</label>
-          <input type="range" min={-5} max={5} step={0.1} value={probeZ}
-                 onChange={(e) => setProbeZ(parseFloat(e.target.value))} style={{ width: '220px' }} />
+          <label style={{ display: 'block', marginBottom: '6px' }}>
+            Z: {probeZ.toFixed(2)} <span style={{ color: '#888' }}>(0 to 2.5)</span>
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={2.5}
+            step={0.05}
+            value={probeZ}
+            onChange={(e) => setProbeZ(parseFloat(e.target.value))}
+            style={{ width: '240px' }}
+          />
         </div>
       </div>
 
