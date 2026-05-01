@@ -47,7 +47,7 @@ export default function StaticSurfaceRegions() {
   const probeEndY = Math.min(5, h2);
 
   const getProbeText = () => {
-    if (!inGreenRegion || probeStartY >= probeEndY) return 'fully stable!';
+    if (!inGreenRegion || probeStartY >= probeEndY) return 'not stable!';
     const labelStart = ((probeStartY + 5) / 10) * 90;
     const labelEnd = ((probeEndY + 5) / 10) * 90;
     return `angle: ${labelStart.toFixed(1)}° - ${labelEnd.toFixed(1)}°`;
