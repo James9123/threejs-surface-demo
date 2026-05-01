@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Surface Splitter - Three.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tweakpane@4.0.3/dist/tweakpane.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: system-ui; }
+        #info {
+            position: absolute; top: 20px; left: 20px; color: white;
+            background: rgba(0,0,0,0.7); padding: 15px 20px; border-radius: 10px;
+            font-size: 14px; z-index: 100;
+        }
+        #controls { position: absolute; top: 20px; right: 20px; z-index: 100; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2 style="margin:0 0 8px 0">3D Surface Splitter</h2>
+        <p style="margin:0">Green = Above surface &nbsp;&nbsp;•&nbsp;&nbsp; Red = Below surface</p>
+        <p style="margin:8px 0 0 0; font-size:13px">Drag to rotate • Scroll to zoom</p>
+    </div>
+
+    <div id="controls"></div>
+
+    <script>
+        // ================== CONFIG ==================
+        const BOUNDS = { xMin: -3, xMax: 10, yMin: 0, yMax: 90, zMin: 0, zMax: 4 };
+        const SEGMENTS = 60;
+
+        let scene, camera, renderer;
+        let surfaceMesh, upperMesh, lowerMesh;
+        let params = { a: 0.05, b: 0.001, c: 1.2 };
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(35, 45, 55);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(30, 50, 20);
+            scene.add(dirLight);
+
+            // Controls (Orbit)
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+
+            // Grid + Axes
+            const grid = new THREE.GridHelper(120, 24, 0x444444, 0x333333);
+            scene.add(grid);
+            
+            const axes = new THREE.AxesHelper(25);
+            scene.add(axes);
+
+            // Create initial objects
+            createMeshes();
+
+            // Tweakpane sliders
+            const pane = new Tweakpane.Pane({ container: document.getElementById('controls') });
+            pane.addBinding(params, 'a', { min: -0.3, max: 0.3, step: 0.001, label: 'a (x² coeff)' });
+            pane.addBinding(params, 'b', { min: -0.01, max: 0.01, step: 0.0001, label: 'b (y² coeff)' });
+            pane.addBinding(params, 'c', { min: 0, max: 4, step: 0.05, label: 'c (offset)' });
+
+            pane.on('change', () => {
+                updateMeshes();
+            });
+
+            // Resize handler
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+
+        function createSurfaceGeometry() {
+            const width = BOUNDS.xMax - BOUNDS.xMin;
+            const depth = BOUNDS.yMax - BOUNDS.yMin;
+
+            const geometry = new THREE.PlaneGeometry(width, depth, SEGMENTS, SEGMENTS);
+            const pos = geometry.attributes.position;
+
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i) + BOUNDS.xMin;
+                const y = pos.getY(i) + BOUNDS.yMin;
+                const z = params.a * x * x + params.b * y * y + params.c;
+                pos.setZ(i, z);
+            }
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        function createUpperVolume() {
+            const width = BOUNDS.xMax - BOUNDS.xMin;
+            const depth = BOUNDS.yMax - BOUNDS.yMin;
+            const height = BOUNDS.zMax - BOUNDS.zMin;
+
+            const geometry = new THREE.BoxGeometry(width, depth, height, SEGMENTS, SEGMENTS, 1);
+            const pos = geometry.attributes.position;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i) + BOUNDS.xMin;
+                let y = pos.getY(i) + BOUNDS.yMin;
+                let z = pos.getZ(i);
+
+                if (z < 0) { // Bottom face follows surface
+                    z = params.a * x * x + params.b * y * y + params.c;
+                }
+                pos.setXYZ(i, x, y, z);
+            }
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        function createLowerVolume() {
+            const width = BOUNDS.xMax - BOUNDS.xMin;
+            const depth = BOUNDS.yMax - BOUNDS.yMin;
+            const height = BOUNDS.zMax - BOUNDS.zMin;
+
+            const geometry = new THREE.BoxGeometry(width, depth, height, SEGMENTS, SEGMENTS, 1);
+            const pos = geometry.attributes.position;
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i) + BOUNDS.xMin;
+                let y = pos.getY(i) + BOUNDS.yMin;
+                let z = pos.getZ(i);
+
+                if (z > 0) { // Top face follows surface
+                    z = params.a * x * x + params.b * y * y + params.c;
+                }
+                pos.setXYZ(i, x, y, z);
+            }
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+
+        function createMeshes() {
+            // Main Surface (Purple)
+            const surfaceGeo = createSurfaceGeometry();
+            const surfaceMat = new THREE.MeshPhongMaterial({ 
+                color: 0xa78bfa, 
+                shininess: 80, 
+                side: THREE.DoubleSide 
+            });
+            surfaceMesh = new THREE.Mesh(surfaceGeo, surfaceMat);
+            surfaceMesh.rotation.x = -Math.PI / 2;
+            scene.add(surfaceMesh);
+
+            // Green Volume (Above)
+            const upperGeo = createUpperVolume();
+            const upperMat = new THREE.MeshPhongMaterial({ 
+                color: 0x22c55e, 
+                transparent: true, 
+                opacity: 0.35, 
+                shininess: 30,
+                side: THREE.DoubleSide 
+            });
+            upperMesh = new THREE.Mesh(upperGeo, upperMat);
+            upperMesh.rotation.x = -Math.PI / 2;
+            upperMesh.position.y = BOUNDS.zMax / 2;
+            scene.add(upperMesh);
+
+            // Red Volume (Below)
+            const lowerGeo = createLowerVolume();
+            const lowerMat = new THREE.MeshPhongMaterial({ 
+                color: 0xef4444, 
+                transparent: true, 
+                opacity: 0.35, 
+                shininess: 30,
+                side: THREE.DoubleSide 
+            });
+            lowerMesh = new THREE.Mesh(lowerGeo, lowerMat);
+            lowerMesh.rotation.x = -Math.PI / 2;
+            lowerMesh.position.y = BOUNDS.zMax / 2;
+            scene.add(lowerMesh);
+        }
+
+        function updateMeshes() {
+            // Remove old meshes
+            scene.remove(surfaceMesh);
+            scene.remove(upperMesh);
+            scene.remove(lowerMesh);
+
+            // Recreate with new parameters
+            createMeshes();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Start everything
+        init();
+    </script>
+</body>
+</html>
